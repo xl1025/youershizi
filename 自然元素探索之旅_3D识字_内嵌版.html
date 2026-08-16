@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>自然元素探索之旅 - 3D幼儿互动识字</title>
     <style>
         /* ==================== 全局重置与基础 ==================== */
@@ -11,22 +11,26 @@
             font-family: 'KaiTi', 'SimSun', 'Microsoft YaHei', sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             display: flex; justify-content: center; align-items: center;
-            min-height: 100vh; overflow: hidden;
+            min-height: 100vh; min-height: 100dvh; overflow: hidden;
             color: #333;
+            /* 避让刘海屏/Home 指示条：内缩安全区，主体始终完整可见（桌面环境 insets 为 0，无副作用） */
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         /* ==================== Three.js 3D背景画布 ==================== */
         #three-canvas {
             position: fixed; top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            width: 100vw; height: 100vh; height: 100dvh;
             z-index: 0; pointer-events: none;
         }
 
         /* ==================== 主应用容器（寻宝地图） ==================== */
         .app-container {
             position: relative; z-index: 1;
-            width: 92vw; max-width: 1300px;
-            aspect-ratio: 16 / 9; border-radius: 24px;
+            /* 自适应：同时受宽度与高度约束，避免竖屏被压扁、横屏（尤其手机横屏）被裁切 */
+            width: min(92vw, 1300px, calc((100dvh - 24px) * 16 / 9));
+            aspect-ratio: 16 / 9; max-height: 94dvh;
+            border-radius: 24px;
             box-shadow:
                 0 25px 80px rgba(0,0,0,0.6),
                 0 0 60px rgba(255,200,100,0.15),
@@ -143,7 +147,7 @@
         /* ==================== 知识卡片弹窗（3D翻转） ==================== */
         .modal-overlay {
             position: fixed; top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            width: 100vw; height: 100vh; height: 100dvh;
             background: rgba(0,0,0,0.75);
             backdrop-filter: blur(12px);
             display: flex; justify-content: center; align-items: center;
@@ -151,6 +155,9 @@
             transition: opacity 0.45s ease;
             z-index: 100;
             perspective: 1500px;
+            /* 避让刘海/Home 指示条：内缩安全区，弹窗始终完整可见 */
+            box-sizing: border-box;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
         .modal-overlay.active {
             opacity: 1; pointer-events: auto;
@@ -159,7 +166,7 @@
         /* 弹窗内容 - 3D翻转进入 */
         .modal-content {
             width: 86vw; max-width: 1050px;
-            height: 78vh; max-height: 700px;
+            height: 78vh; height: 78dvh; max-height: 700px;
             background: linear-gradient(145deg, #fffef5 0%, #fff8e7 50%, #fff3d6 100%);
             border-radius: 32px;
             display: flex; overflow: hidden;
@@ -846,6 +853,19 @@
             transform: scale(1.015);
         }
 
+        /* ==================== 移动端触控优化（桌面无副作用） ==================== */
+        /* 禁止双击缩放与点击延迟，保证按钮/网格点击即时响应 */
+        button, .grid-item, .quiz-option { touch-action: manipulation; }
+        /* 顶部拖动组与田字格书写需独占触摸，避免误触发页面滚动或缩放 */
+        .top-block, #tzg-container { touch-action: none; }
+
+        /* 触屏设备（无 hover 能力）下，取消 :hover 的位移/缩放/光晕残留，避免点击后元素卡在放大态 */
+        @media (hover: none) {
+            .grid-item:hover { transform: none !important; background: rgba(255,255,255,0) !important; box-shadow: none !important; }
+            .tb-btn:hover, .flip-btn:hover, .close-btn:hover, .spk-btn:hover,
+            .quiz-option:hover, .quiz-close:hover, .tgp-btn:hover, #tzg-container:hover { transform: none !important; }
+        }
+
         /* ==================== 响应式适配 ==================== */
         @media (max-width: 1024px) {
             .modal-content { width: 92vw; height: 82vh; }
@@ -854,8 +874,8 @@
             .strokes-side { max-width: 150px; }
         }
         @media (max-width: 900px) {
-            .app-container { aspect-ratio: auto; height: 70vh; }
-            .modal-content { flex-direction: column; height: 90vh; overflow-y: auto; }
+            .app-container { aspect-ratio: auto; width: 94vw; height: 86dvh; max-width: none; max-height: none; }
+            .modal-content { flex-direction: column; height: 90vh; height: 90dvh; max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px); overflow-y: auto; }
             .modal-left { width: 100%; height: 32%; border-right: none; border-bottom: 4px dashed #d4c2a5; padding-top: 8px; }
             .modal-right { width: 100%; }
             .flip-face { padding: 60px 16px 48px; }
@@ -880,16 +900,25 @@
             .read-popup-head { font-size: 1.1em; padding: 10px 14px; }
         }
 
+        /* 竖屏设备（手机/平板竖持）：以高度驱动，让寻宝地图铺满可视区，卡片更大更易点按 */
+        @media (orientation: portrait) {
+            .app-container { aspect-ratio: auto; width: 94vw; height: 86dvh; max-width: none; max-height: none; }
+        }
+
         /* ==================== 加载动画 ==================== */
         .loading-screen {
             position: fixed; top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            width: 100vw; height: 100vh; height: 100dvh;
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            z-index: 9999; transition: opacity 0.8s ease;
+            z-index: 9999; transition: opacity 0.8s ease, visibility 0s 0.8s;
+            /* 避让安全区，加载动画居中于可见区域 */
+            box-sizing: border-box;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
-        .loading-screen.hide { opacity: 0; pointer-events: none; }
+        /* 隐藏后立即可见性切到 hidden（延迟至淡出动画结束），彻底杜绝遮挡点击；JS 还会在淡出后置 display:none */
+        .loading-screen.hide { opacity: 0; pointer-events: none; visibility: hidden; }
         .loading-spinner {
             width: 60px; height: 60px;
             border: 5px solid rgba(255,213,79,0.2);
@@ -911,6 +940,22 @@
         <div class="loading-spinner"></div>
         <div class="loading-text">正在准备探索之旅...</div>
     </div>
+
+    <!-- 兜底：即使 CDN/脚本加载缓慢或被网络阻塞，最多 3 秒后强制隐藏加载页，
+         避免手机/平板卡在“正在加载中”并拦截所有点击（独立于后续阻塞脚本） -->
+    <script>
+      (function () {
+        function forceHide() {
+          var l = document.getElementById('loadingScreen');
+          if (l) {
+            l.classList.add('hide');
+            setTimeout(function () { if (l) l.style.display = 'none'; }, 900);
+          }
+        }
+        window.__forceHideLoader = forceHide;
+        setTimeout(forceHide, 3000);
+      })();
+    </script>
 
     <!-- Three.js 3D粒子背景 -->
     <canvas id="three-canvas"></canvas>
@@ -1060,9 +1105,9 @@
 
     <!-- ==================== 外部库引入 ==================== -->
     <!-- Hanzi Writer - 汉字笔顺引擎 -->
-    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <!-- Canvas Confetti - 撒花特效 -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <!-- ==================== 数据层 ==================== -->
     <script>
@@ -1121,13 +1166,25 @@
 
     // ==================== 初始化入口 ====================
     document.addEventListener('DOMContentLoaded', () => {
-        initThreeBackground();
-        buildGrid();
-        initTopDrag();
-        // 隐藏加载画面
+        // 3D 背景依赖外部 CDN（three.js）；若离线 / 网络受限导致加载失败，绝不能阻塞主功能
+        try {
+            initThreeBackground();
+        } catch (e) {
+            console.warn('3D 背景初始化失败（不影响主功能，已回退纯色渐变背景）：', e);
+        }
+        try {
+            buildGrid();
+            initTopDrag();
+        } catch (e) {
+            console.error('主场景初始化出错：', e);
+        }
+        // 无论初始化是否成功，都隐藏加载画面，避免永久卡在“正在准备…”状态
         setTimeout(() => {
             const loader = document.getElementById('loadingScreen');
-            if (loader) loader.classList.add('hide');
+            if (loader) {
+                loader.classList.add('hide');
+                setTimeout(() => { if (loader) loader.style.display = 'none'; }, 900);
+            }
         }, 1200);
     });
 
@@ -1137,24 +1194,33 @@
         if (!block) return;
         block.addEventListener('pointerdown', (e) => {
             if (e.target.closest('button')) return;   // 点击小喇叭等按钮时不拖动
-            topDrag.dragging = true;
+            topDrag.pending = true;
+            topDrag.dragging = false;
             topDrag.sx = e.clientX; topDrag.sy = e.clientY;
             topDrag.ox = topDrag.x;    topDrag.oy = topDrag.y;
             try { block.setPointerCapture(e.pointerId); } catch(err){}
         });
         block.addEventListener('pointermove', (e) => {
-            if (!topDrag.dragging) return;
-            topDrag.x = topDrag.ox + (e.clientX - topDrag.sx);
-            topDrag.y = topDrag.oy + (e.clientY - topDrag.sy);
-            block.style.transform = `translate(${topDrag.x}px, ${topDrag.y}px)`;
+            if (!topDrag.pending && !topDrag.dragging) return;
+            const dx = e.clientX - topDrag.sx;
+            const dy = e.clientY - topDrag.sy;
+            // 仅当移动超过阈值才判定为拖动，避免点击 / 轻微滑动误触发位移（移动端尤为重要）
+            if (!topDrag.dragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) topDrag.dragging = true;
+            if (topDrag.dragging) {
+                topDrag.x = topDrag.ox + dx;
+                topDrag.y = topDrag.oy + dy;
+                block.style.transform = `translate(${topDrag.x}px, ${topDrag.y}px)`;
+            }
         });
-        const end = () => { topDrag.dragging = false; };
+        const end = () => { topDrag.dragging = false; topDrag.pending = false; };
         block.addEventListener('pointerup', end);
         block.addEventListener('pointercancel', end);
     }
 
     // ==================== Three.js 3D粒子背景 ====================
     function initThreeBackground() {
+        if (threeScene) return;                        // 避免重复初始化（async 加载可能触发多次）
+        if (typeof THREE === 'undefined') return;      // CDN 未就绪时直接跳过，回退纯色背景
         const canvas = document.getElementById('three-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -2343,6 +2409,7 @@
 
     // ==================== 撒花庆祝特效 ====================
     function triggerConfetti() {
+        if (typeof confetti === 'undefined') return;  // 离线 / CDN 未加载时静默跳过，不影响主流程
         const duration = 2.8 * 1000;
         const animationEnd = Date.now() + duration;
         const defaults = {
@@ -2455,10 +2522,9 @@
     });
     </script>
 
-    <!-- ==================== Three.js r128 UMD 内联（离线可用） ====================
-         注：以下为 Three.js r128 完整 UMD 构建（精简版核心），确保零CDN依赖可运行3D场景。
-         如需完整功能请替换为官方 CDN：<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <!-- Three.js（3D背景，纯装饰，非核心功能）。使用 async 加载，绝不阻塞页面与 DOMContentLoaded；
+         即使 CDN 慢/失败，主界面与交互照常可用，背景回退为纯色渐变。 -->
+    <script async src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"
+            onload="try{ if(typeof initThreeBackground==='function') initThreeBackground(); }catch(e){ console.warn('3D背景初始化失败（不影响主功能）:', e); }"></script>
 </body>
 </html>
